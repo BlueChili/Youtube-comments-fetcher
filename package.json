@@ -1,0 +1,29 @@
+{
+  "name": "youtube-comments-fetcher",
+  "version": "0.1.0",
+  "description": "A command line like, Node.js Youtube comments fetcher utility",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlueChili/Youtube-comments-fetcher.git"
+  },
+  "keywords": [
+    "Youtube",
+    "comments",
+    "fetcher",
+    "crawler",
+    "spider"
+  ],
+  "author": "German Cabarcas",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BlueChili/Youtube-comments-fetcher/issues"
+  },
+  "homepage": "https://github.com/BlueChili/Youtube-comments-fetcher#readme",
+  "dependencies": {
+    "googleapis": "^2.1.3"
+  }
+}
