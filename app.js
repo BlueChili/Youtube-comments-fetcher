@@ -8,7 +8,7 @@ var fetcher = {
 		part: 'snippet,replies',
 		videoId: process.argv[4] || 'wtLJPvx7-ys',
 		pageToken: '',
-		maxResults: process.argv[2] || 1,
+		maxResults: process.argv[2] || 10,
 		order: 'relevance'},
 	repliesParams: {
 		auth: 'AIzaSyBEOcZdXu5Sz33uD2MzUgsbcnxOyRIlQt4',
