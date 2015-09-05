@@ -21,6 +21,7 @@ var fetcher = {
 	saveFile: process.argv[5] || 'results.json',
 	topCommentsCeiling: parseInt(process.argv[3]),
 	topCommentsCounter: 0,
+	repliedComments: [],
 
 	init: function (){
 		youtube.commentThreads.list(fetcher.initParams, function(err, response){
@@ -35,7 +36,7 @@ var fetcher = {
 	notifier: function(){
 		console.log('Total top comments fetched: ' + fetcher.topCommentsCounter);
 		console.log('Length of results array: ' + fetcher.results.length);
-		fetcher.fileSave();
+		fetcher.repliesVerifier();
 	},
 
 	topCommentHandler: function(item){
@@ -55,7 +56,7 @@ var fetcher = {
 					textDisplay: item.snippet.topLevelComment.snippet.textDisplay,
 					totalReplyCount: item.snippet.totalReplyCount,
 					replies: []};
-					fetcher.results.push(topComment);
+				fetcher.results.push(topComment);
 			}
 		}
 		else {
@@ -72,19 +73,70 @@ var fetcher = {
 				totalReplyCount: item.snippet.totalReplyCount};
 			fetcher.results.push(topComment);
 		}
-		if (fetcher.results.length == fetcher.topCommentsCeiling) {
+		if (fetcher.results.length === fetcher.topCommentsCeiling) {
 			return fetcher.notifier();
 		}
 	},
 
-	
-	fileSave: function(){
-		var data = JSON.stringify(fetcher.results);
-		fs.appendFile(fetcher.saveFile, data, function(err){
-			if (err) console.log(err.message);
-			console.log('Saving file: ' + process.argv[5]);
+	repliesVerifier: function(){
+		console.log('Beginning the replies fetch process');
+		fetcher.results.forEach(function(item, index){
+			if(item.hasOwnProperty('replies')) {
+				fetcher.repliesParams.parentId = item.id;
+				fetcher.repliedComments.push(index);
+				fetcher.repliesInit(index);
+			}
 		});
+	},
+
+	repliesInit: function(index){
+		youtube.comments.list(fetcher.repliesParams, function(err, response){
+			if (response.hasOwnProperty('nextPageToken')){
+				fetcher.repliesParams.pageToken = response.nextPageToken;
+				response.items.forEach(function(item){
+					fetcher.replyHandler(item, index);
+				});
+				fetcher.repliesInit(index);
+			}	else {
+				response.items.forEach(function(item){
+					fetcher.replyHandler(item, index);
+				});
+			}
+		});
+	},
+
+	replyHandler: function(item, index){
+		var reply = {
+			id: item.id,
+			kind: item.kind,
+			authorChannelUrl: item.snippet.authorChannelUrl,
+			authorDisplayName: item.snippet.authorDisplayName,
+			authorProfileImageUrl: item.snippet.authorProfileImageUrl,
+			likeCount: item.snippet.likeCount,
+			parentId: item.snippet.parentId,
+			publishedAt: item.snippet.publishedAt,
+			updatedAt: item.snippet.updatedAt,
+			textDisplay: item.snippet.textDisplay
+		};
+		fetcher.results[index].replies.push(reply);
+	},
+
+	fileSave: function(){
+		console.log('slicing');
+		var data = JSON.stringify(fetcher.results.slice(0, fetcher.topCommentsCeiling));
+		console.log('slicing done');
+		// fs.writeFile(fetcher.saveFile, data, function(err){
+		// 	if (err) console.log(err.message);
+		// 	console.log('Saving file: ' + process.argv[5]);
+		// });
+		fs.writeFileSync(fetcher.saveFile, data);
 	}
 };
 
+console.log('Initializing fetch operation');
 fetcher.init();
+process.on('beforeExit', function(){
+	console.log('beginning file save');
+	fetcher.fileSave();
+	console.log('file saved');
+});
