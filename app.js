@@ -1,42 +1,43 @@
-var google = require('googleapis'),
-		youtube = google.youtube('v3'),
+var { google } = require('googleapis'),
+  youtube = google.youtube({
+    auth: 'AIzaSyD6FQi95R1A0Z-AkHYMniekeWAi0FiEpU4',
+    version: 'v3'
+    }),
 		fs = require('fs');
 
-var fetcher = {
-	initParams: {
-		auth: 'AIzaSyBEOcZdXu5Sz33uD2MzUgsbcnxOyRIlQt4',
-		part: 'snippet,replies',
-		videoId: process.argv[4] || 'wtLJPvx7-ys',
-		pageToken: '',
-		maxResults: process.argv[2] || 10,
-		order: 'relevance'},
-	repliesParams: {
-		auth: 'AIzaSyBEOcZdXu5Sz33uD2MzUgsbcnxOyRIlQt4',
-		part: 'snippet',
-		maxResults: 80,
-		pageToken: '',
-		parentId: ''	},
+var initParams = {
+  part: 'snippet,replies',
+  videoId: process.argv[4] || 'wtLJPvx7-ys',
+  pageToken: '',
+  maxResults: process.argv[2] || 10,
+  order: 'relevance'}
 
+var repliesParams = {
+  part: 'snippet',
+  maxResults: 80,
+  pageToken: '',
+  parentId: ''	}
+
+function notifier(){
+  console.log(`Total top comments fetched: ${fetcher.topCommentsCounter}`);
+  console.log(`Length of results array: ${fetcher.results.length}`);
+  fetcher.repliesVerifier();
+}
+
+var fetcher = {
 	results: [],
 	saveFile: process.argv[5] || 'results.json',
 	topCommentsCeiling: parseInt(process.argv[3]),
 	topCommentsCounter: 0,
 	repliedComments: [],
 
-	init: function (){
-		youtube.commentThreads.list(fetcher.initParams, function(err, response){
-			fetcher.initParams.pageToken = response.nextPageToken;
-			response.items.forEach(function(item){
-				fetcher.topCommentHandler(item);
-			});
-			if(fetcher.topCommentsCounter < fetcher.topCommentsCeiling) fetcher.init();
-		});
-	},
-
-	notifier: function(){
-		console.log('Total top comments fetched: ' + fetcher.topCommentsCounter);
-		console.log('Length of results array: ' + fetcher.results.length);
-		fetcher.repliesVerifier();
+	init: async function (){
+		const response = await youtube.commentThreads.list(initParams);
+    initParams.pageToken = response.nextPageToken;
+    response.data.items.forEach(function(item){
+      fetcher.topCommentHandler(item);
+    });
+    if (fetcher.topCommentsCounter < fetcher.topCommentsCeiling) fetcher.init();
 	},
 
 	topCommentHandler: function(item){
@@ -74,7 +75,7 @@ var fetcher = {
 			fetcher.results.push(topComment);
 		}
 		if (fetcher.results.length === fetcher.topCommentsCeiling) {
-			return fetcher.notifier();
+			return notifier();
 		}
 	},
 
@@ -82,7 +83,7 @@ var fetcher = {
 		console.log('Beginning the replies fetch process');
 		fetcher.results.forEach(function(item, index){
 			if(item.hasOwnProperty('replies')) {
-				fetcher.repliesParams.parentId = item.id;
+				repliesParams.parentId = item.id;
 				fetcher.repliedComments.push(index);
 				fetcher.repliesInit(index);
 			}
@@ -90,15 +91,15 @@ var fetcher = {
 	},
 
 	repliesInit: function(index){
-		youtube.comments.list(fetcher.repliesParams, function(err, response){
+		youtube.comments.list(repliesParams, function(err, response){
 			if (response.hasOwnProperty('nextPageToken')){
-				fetcher.repliesParams.pageToken = response.nextPageToken;
+				repliesParams.pageToken = response.nextPageToken;
 				response.items.forEach(function(item){
 					fetcher.replyHandler(item, index);
 				});
 				fetcher.repliesInit(index);
 			}	else {
-				response.items.forEach(function(item){
+				response.data.items.forEach(function(item){
 					fetcher.replyHandler(item, index);
 				});
 			}
@@ -134,7 +135,7 @@ var fetcher = {
 };
 
 console.log('Initializing fetch operation');
-fetcher.init();
+fetcher.init().catch( console.error );
 process.on('beforeExit', function(){
 	console.log('beginning file save');
 	fetcher.fileSave();
